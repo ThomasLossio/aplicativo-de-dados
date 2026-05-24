@@ -1,0 +1,34 @@
+<resources>
+    <string name="app_name">Dados</string>
+    <string name="action_roll">Rolar</string>
+    <string name="action_decrease_dice">Diminuir dados</string>
+    <string name="action_increase_dice">Aumentar dados</string>
+    <string name="action_settings">Configurações</string>
+    <string name="settings_title">Configurações</string>
+    <string name="settings_close">Fechar configurações</string>
+    <string name="settings_dice_count">Número de dados</string>
+    <string name="settings_dice_values">Valores dos dados</string>
+    <string name="settings_appearance">Aparência</string>
+    <string name="settings_animation">Animação e rolagem</string>
+    <string name="settings_feedback">Som e vibração</string>
+    <string name="settings_total">Mostrar total</string>
+    <string name="settings_default_range">Intervalo padrão</string>
+    <string name="settings_min_value">Mínimo</string>
+    <string name="settings_max_value">Máximo</string>
+    <string name="settings_follow_default">Usar padrão</string>
+    <string name="settings_display_mode">Modo de exibição</string>
+    <string name="settings_color_mode">Cores dos dados</string>
+    <string name="settings_roll_speed">Velocidade</string>
+    <string name="settings_tap_to_roll">Tocar na tela para rolar</string>
+    <string name="settings_shake_to_roll">Agitar para rolar</string>
+    <string name="settings_sound">Som</string>
+    <string name="settings_vibration">Vibração</string>
+    <string name="display_auto">Automático</string>
+    <string name="display_numbers">Somente números</string>
+    <string name="colors_multi">Multicolorido</string>
+    <string name="colors_single">Cor única</string>
+    <string name="speed_slow">Lenta</string>
+    <string name="speed_normal">Normal</string>
+    <string name="speed_fast">Rápida</string>
+    <string name="total_format">Total: %1$d</string>
+</resources>
