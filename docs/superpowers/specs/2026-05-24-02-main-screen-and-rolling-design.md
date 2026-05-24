@@ -13,6 +13,7 @@ Implement the first usable dice roller experience.
 - Maximum number of dice is 40.
 - Rolling generates random values for all visible dice.
 - Multiple dice are displayed in a responsive grid.
+- Any visible text or accessibility label is in Brazilian Portuguese.
 
 ## User Experience
 On first launch the user sees one large die using classic pip dots. They can roll immediately, add dice with `+`, remove dice with `-`, and open settings from the gear button.
@@ -26,6 +27,7 @@ On first launch the user sees one large die using classic pip dots. They can rol
 ## Acceptance Criteria
 - The app starts with exactly one die.
 - The die range defaults to 1-6.
+- Visible labels and accessibility descriptions are in Brazilian Portuguese.
 - The roll button updates visible dice values.
 - `+` cannot exceed 40 dice.
 - `-` cannot go below 1 die.
@@ -34,4 +36,3 @@ On first launch the user sees one large die using classic pip dots. They can rol
 ## Verification
 - Manual test with 1, 2, 6, 20, and 40 dice.
 - Confirm dice values stay within their configured range.
-

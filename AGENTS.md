@@ -17,6 +17,9 @@ This repository is for a native Android dice roller app. The app targets Android
 - Values above 6 use numbers in the initial automatic display mode.
 - Image and sticker customization is out of scope.
 - The app must have no ads and no tracking.
+- The app is for the user and nearby Brazilian users, so every visible app string must be in Brazilian Portuguese.
+- Do not add multi-language support or locale switching unless the user explicitly asks later.
+- Internal docs, code identifiers, and commit messages may use English, but the Android UI must not expose English labels to users.
 
 ## Specs
 Implementation is split into specs in `docs/superpowers/specs/`:
@@ -51,4 +54,4 @@ Follow the specs in order unless the user explicitly changes priority.
 - Use Jetpack Compose for UI.
 - Keep app state simple at first; introduce ViewModel and clearer state holders as behavior grows.
 - Prefer clear domain functions for testable logic instead of burying behavior directly in composables.
-- Keep user-facing text in Portuguese unless the user asks otherwise.
+- Keep all user-facing app text in Brazilian Portuguese (`pt-BR`). Do not use English labels in the Android UI.
