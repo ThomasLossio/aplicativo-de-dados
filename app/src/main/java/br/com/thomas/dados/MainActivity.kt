@@ -5,8 +5,7 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import android.media.AudioManager
-import android.media.ToneGenerator
+import android.media.MediaPlayer
 import android.os.Build
 import android.os.Bundle
 import android.os.VibrationEffect
@@ -83,10 +82,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.math.abs
 import kotlin.math.sqrt
 
 object AppText {
@@ -96,8 +100,22 @@ object AppText {
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        hideNavigationBar()
         setContent {
             DadosApp()
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) hideNavigationBar()
+    }
+
+    private fun hideNavigationBar() {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(WindowInsetsCompat.Type.navigationBars())
         }
     }
 }
@@ -111,16 +129,16 @@ fun DadosApp() {
         var showSettings by remember { mutableStateOf(false) }
         val scope = rememberCoroutineScope()
         val context = LocalContext.current
-        val soundPlayer = rememberRollSoundPlayer()
+        val soundPlayer = rememberRollSoundPlayer(context)
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
         fun rollDice() {
             if (isRolling) return
+            isRolling = true
             if (state.settings.soundEnabled) soundPlayer.play(state.settings.rollSpeed)
             if (state.settings.vibrationEnabled) vibrate(context, 35)
 
             scope.launch {
-                isRolling = true
                 repeat(state.settings.rollSpeed.steps) {
                     state = DiceEngine.roll(state)
                     kotlinx.coroutines.delay(state.settings.rollSpeed.delayMillis)
@@ -341,33 +359,32 @@ private fun DieFace(
     modifier: Modifier = Modifier,
 ) {
     val face = DiceFaceRenderer.render(die.value, settings.displayMode)
+    val faceColor = faceColor(settings.faceColorMode)
     val transition = rememberInfiniteTransition(label = "dice-roll")
-    val rotation by transition.animateFloat(
-        initialValue = -12f,
-        targetValue = 12f,
+    val faceTurn by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 180, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse,
+            animation = tween(durationMillis = (settings.rollSpeed.delayMillis * 4).toInt(), easing = LinearEasing),
+            repeatMode = RepeatMode.Restart,
         ),
-        label = "dice-roll-rotation",
+        label = "dice-face-turn",
     )
-    val scale by transition.animateFloat(
-        initialValue = 0.94f,
-        targetValue = 1.03f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 140, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "dice-roll-scale",
-    )
+    val visibleTurn = if (isRolling) faceTurn else 0f
+    val normalizedTurn = visibleTurn % 360f
+    val isBackSide = normalizedTurn > 90f && normalizedTurn < 270f
+    val edgeShadowAlpha = if (isRolling) {
+        ((90f - abs((normalizedTurn % 180f) - 90f)) / 90f * 0.26f).coerceIn(0f, 0.26f)
+    } else {
+        0f
+    }
     Box(
         modifier = modifier
             .graphicsLayer {
                 if (isRolling) {
-                    rotationX = rotation
-                    rotationY = -rotation
-                    scaleX = scale
-                    scaleY = scale
+                    rotationY = visibleTurn
+                    scaleX = 0.96f
+                    scaleY = 0.98f
                     cameraDistance = 14f * density
                 }
             }
@@ -375,20 +392,36 @@ private fun DieFace(
             .padding(18.dp),
         contentAlignment = Alignment.Center,
     ) {
-        if (face.number != null) {
-            Text(
-                text = face.number,
-                color = Color.White.copy(alpha = 0.88f),
-                fontSize = numberSize.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-            )
-        } else {
-            PipCanvas(
-                pips = face.pips,
-                pipSize = pipSize,
-                color = Color.White.copy(alpha = 0.75f),
-                modifier = Modifier.fillMaxSize(),
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    if (isBackSide) rotationY = 180f
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            if (face.number != null) {
+                Text(
+                    text = face.number,
+                    color = faceColor,
+                    fontSize = numberSize.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                )
+            } else {
+                PipCanvas(
+                    pips = face.pips,
+                    pipSize = pipSize,
+                    color = faceColor,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
+        if (edgeShadowAlpha > 0f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = edgeShadowAlpha)),
             )
         }
     }
@@ -525,6 +558,12 @@ private fun SettingsSheet(
                     max = DiceEngine.maxDiceCount,
                     onChange = { onStateChange(DiceEngine.setDiceCount(state, it)) },
                 )
+                PresetGrid(
+                    label = stringResource(id = R.string.settings_presets),
+                    options = DiceEngine.diceCountPresets.map { count -> count to count.toString() },
+                    selected = state.dice.size,
+                    onSelect = { count -> onStateChange(DiceEngine.setDiceCount(state, count)) },
+                )
             }
 
             SettingsRow(
@@ -577,6 +616,15 @@ private fun SettingsSheet(
                     ),
                     selected = state.settings.displayMode,
                     onSelect = { mode -> onStateChange(DiceEngine.updateSettings(state) { it.copy(displayMode = mode) }) },
+                )
+                ChoiceRow(
+                    label = stringResource(id = R.string.settings_face_color_mode),
+                    options = listOf(
+                        FaceColorMode.Black to stringResource(id = R.string.face_color_black),
+                        FaceColorMode.White to stringResource(id = R.string.face_color_white),
+                    ),
+                    selected = state.settings.faceColorMode,
+                    onSelect = { mode -> onStateChange(DiceEngine.updateSettings(state) { it.copy(faceColorMode = mode) }) },
                 )
                 ChoiceRow(
                     label = stringResource(id = R.string.settings_color_mode),
@@ -763,6 +811,12 @@ private fun RangeEditor(
                 },
             )
         }
+        PresetGrid(
+            label = stringResource(id = R.string.settings_presets),
+            options = DiceRange.standardPresets.map { preset -> preset to "${preset.min} - ${preset.max}" },
+            selected = range,
+            onSelect = onChange,
+        )
         if (showUseDefault) {
             Button(onClick = onUseDefault) {
                 Text(text = stringResource(id = R.string.settings_follow_default))
@@ -805,6 +859,40 @@ private fun RangeValueButton(
                 contentPadding = PaddingValues(0.dp),
             ) {
                 Text("+")
+            }
+        }
+    }
+}
+
+@Composable
+private fun <T> PresetGrid(
+    label: String,
+    options: List<Pair<T, String>>,
+    selected: T,
+    onSelect: (T) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(text = label, fontSize = 12.sp, color = Color.DarkGray)
+        options.chunked(5).forEach { rowOptions ->
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                rowOptions.forEach { (value, text) ->
+                    Button(
+                        onClick = { onSelect(value) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(38.dp),
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (value == selected) Color(0xFF2B6070) else Color(0xFFE5E7EB),
+                            contentColor = if (value == selected) Color.White else Color.Black,
+                        ),
+                    ) {
+                        Text(text = text, fontSize = 13.sp, textAlign = TextAlign.Center)
+                    }
+                }
+                repeat(5 - rowOptions.size) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
             }
         }
     }
@@ -916,8 +1004,8 @@ private fun ShakeToRoll(
 }
 
 @Composable
-private fun rememberRollSoundPlayer(): RollSoundPlayer {
-    val player = remember { RollSoundPlayer() }
+private fun rememberRollSoundPlayer(context: Context): RollSoundPlayer {
+    val player = remember(context) { RollSoundPlayer(context) }
     DisposableEffect(player) {
         onDispose {
             player.release()
@@ -926,30 +1014,34 @@ private fun rememberRollSoundPlayer(): RollSoundPlayer {
     return player
 }
 
-private class RollSoundPlayer {
-    private val toneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 60)
+private class RollSoundPlayer(context: Context) {
+    private val mediaPlayer = MediaPlayer.create(context.applicationContext, R.raw.dice_roll)
+    private val generation = AtomicInteger(0)
+    private val lock = Any()
 
     fun play(speed: RollSpeed) {
+        val playGeneration = generation.incrementAndGet()
+        synchronized(lock) {
+            mediaPlayer.seekTo(0)
+            mediaPlayer.start()
+        }
         Thread {
-            val taps = when (speed) {
-                RollSpeed.Slow -> 9
-                RollSpeed.Normal -> 7
-                RollSpeed.Fast -> 5
-            }
-            repeat(taps) { index ->
-                synchronized(toneGenerator) {
-                    toneGenerator.startTone(
-                        if (index % 2 == 0) ToneGenerator.TONE_PROP_ACK else ToneGenerator.TONE_PROP_BEEP,
-                        34,
-                    )
+            Thread.sleep(speed.durationMillis)
+            if (generation.get() != playGeneration) return@Thread
+            synchronized(lock) {
+                if (mediaPlayer.isPlaying) {
+                    mediaPlayer.pause()
+                    mediaPlayer.seekTo(0)
                 }
-                Thread.sleep((speed.delayMillis * 0.7f).toLong().coerceAtLeast(22L))
             }
         }.start()
     }
 
     fun release() {
-        toneGenerator.release()
+        generation.incrementAndGet()
+        synchronized(lock) {
+            mediaPlayer.release()
+        }
     }
 }
 
@@ -993,6 +1085,11 @@ private fun dieColor(id: Int, mode: ColorMode): Color {
         Color(0xFF2B6070),
     )
     return palette[(id - 1).floorMod(palette.size)]
+}
+
+private fun faceColor(mode: FaceColorMode): Color = when (mode) {
+    FaceColorMode.Black -> Color.Black.copy(alpha = 0.78f)
+    FaceColorMode.White -> Color.White.copy(alpha = 0.9f)
 }
 
 private fun Int.floorMod(other: Int): Int = ((this % other) + other) % other

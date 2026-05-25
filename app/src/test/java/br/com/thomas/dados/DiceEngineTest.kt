@@ -12,6 +12,7 @@ class DiceEngineTest {
 
         assertEquals(1, state.dice.size)
         assertEquals(DiceRange(1, 6), state.settings.defaultRange)
+        assertEquals(FaceColorMode.Black, state.settings.faceColorMode)
         assertEquals(DiceRange(1, 6), state.dice.single().range)
         assertEquals(1, state.dice.single().value)
     }
@@ -25,6 +26,11 @@ class DiceEngineTest {
 
         assertEquals(40, tooMany.dice.size)
         assertEquals(1, tooFew.dice.size)
+    }
+
+    @Test
+    fun diceCountPresetsIncludeQuickChoicesUpToForty() {
+        assertEquals(listOf(1, 2, 3, 4, 5, 6, 10, 20, 30, 40), DiceEngine.diceCountPresets)
     }
 
     @Test
@@ -101,12 +107,45 @@ class DiceEngineTest {
     }
 
     @Test
+    fun standardRangePresetsIncludeCommonDiceTypes() {
+        assertEquals(
+            listOf(
+                DiceRange(1, 4),
+                DiceRange(1, 6),
+                DiceRange(1, 8),
+                DiceRange(1, 10),
+                DiceRange(1, 12),
+                DiceRange(1, 20),
+                DiceRange(1, 100),
+            ),
+            DiceRange.standardPresets,
+        )
+    }
+
+    @Test
     fun boardLayoutUsesLargeFullScreenRegionsForSmallDiceCounts() {
         assertEquals(DiceBoardLayout.Single, DiceBoardLayout.forDiceCount(1))
         assertEquals(DiceBoardLayout.Split, DiceBoardLayout.forDiceCount(2))
         assertEquals(DiceBoardLayout.Split, DiceBoardLayout.forDiceCount(3))
         assertEquals(DiceBoardLayout.TwoByTwo, DiceBoardLayout.forDiceCount(4))
         assertEquals(DiceBoardLayout.Grid, DiceBoardLayout.forDiceCount(5))
+    }
+
+    @Test
+    fun rollSpeedsUseLongReadableDurations() {
+        assertEquals(3_000L, RollSpeed.Slow.durationMillis)
+        assertEquals(2_000L, RollSpeed.Normal.durationMillis)
+        assertEquals(1_000L, RollSpeed.Fast.durationMillis)
+    }
+
+    @Test
+    fun rollSoundsCoverTheFullAnimationDuration() {
+        assertEquals(16, RollSpeed.Slow.soundTapCount)
+        assertEquals(11, RollSpeed.Normal.soundTapCount)
+        assertEquals(6, RollSpeed.Fast.soundTapCount)
+        assertEquals(200L, RollSpeed.Slow.soundIntervalMillis)
+        assertEquals(200L, RollSpeed.Normal.soundIntervalMillis)
+        assertEquals(200L, RollSpeed.Fast.soundIntervalMillis)
     }
 }
 

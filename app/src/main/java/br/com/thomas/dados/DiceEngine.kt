@@ -5,6 +5,7 @@ import kotlin.random.Random
 object DiceEngine {
     const val minDiceCount = 1
     const val maxDiceCount = 40
+    val diceCountPresets = listOf(1, 2, 3, 4, 5, 6, 10, 20, 30, 40)
 
     fun initialState(): DiceState {
         val settings = DiceSettings()

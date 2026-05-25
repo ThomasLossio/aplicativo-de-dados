@@ -9,6 +9,16 @@ data class DiceRange(
     }
 
     companion object {
+        val standardPresets = listOf(
+            DiceRange(1, 4),
+            DiceRange(1, 6),
+            DiceRange(1, 8),
+            DiceRange(1, 10),
+            DiceRange(1, 12),
+            DiceRange(1, 20),
+            DiceRange(1, 100),
+        )
+
         fun isValid(min: Int, max: Int): Boolean = min in 1..100 && max in 1..100 && min <= max
     }
 }
@@ -24,6 +34,7 @@ data class DiceSettings(
     val defaultRange: DiceRange = DiceRange(1, 6),
     val displayMode: DisplayMode = DisplayMode.Automatic,
     val colorMode: ColorMode = ColorMode.Multicolor,
+    val faceColorMode: FaceColorMode = FaceColorMode.Black,
     val rollSpeed: RollSpeed = RollSpeed.Normal,
     val tapToRoll: Boolean = true,
     val shakeToRoll: Boolean = true,
@@ -47,6 +58,11 @@ enum class ColorMode {
     Single,
 }
 
+enum class FaceColorMode {
+    Black,
+    White,
+}
+
 enum class DiceBoardLayout {
     Single,
     Split,
@@ -67,9 +83,19 @@ enum class RollSpeed(
     val steps: Int,
     val delayMillis: Long,
 ) {
-    Slow(18, 90L),
-    Normal(12, 55L),
-    Fast(7, 32L),
+    Slow(30, 100L),
+    Normal(20, 100L),
+    Fast(10, 100L),
+    ;
+
+    val durationMillis: Long
+        get() = steps * delayMillis
+
+    val soundTapCount: Int
+        get() = (durationMillis / soundIntervalMillis).toInt() + 1
+
+    val soundIntervalMillis: Long
+        get() = 200L
 }
 
 enum class PipPosition {
