@@ -4,4 +4,4 @@ build/
 local.properties
 *.iml
 .superpowers/
-
+gradle/gradle-daemon-jvm.properties

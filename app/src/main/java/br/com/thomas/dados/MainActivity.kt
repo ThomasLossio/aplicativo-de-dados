@@ -14,6 +14,12 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,14 +27,17 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -62,6 +71,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -106,7 +116,7 @@ fun DadosApp() {
 
         fun rollDice() {
             if (isRolling) return
-            if (state.settings.soundEnabled) soundPlayer.play()
+            if (state.settings.soundEnabled) soundPlayer.play(state.settings.rollSpeed)
             if (state.settings.vibrationEnabled) vibrate(context, 35)
 
             scope.launch {
@@ -140,7 +150,8 @@ fun DadosApp() {
                         total = DiceEngine.total(state),
                         modifier = Modifier
                             .align(Alignment.TopCenter)
-                            .padding(top = 18.dp),
+                            .statusBarsPadding()
+                            .padding(top = 12.dp),
                     )
                 }
 
@@ -153,7 +164,8 @@ fun DadosApp() {
                     onSettings = { showSettings = true },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(horizontal = 18.dp, vertical = 24.dp),
+                        .navigationBarsPadding()
+                        .padding(horizontal = 18.dp, vertical = 14.dp),
                 )
             }
         }
@@ -186,16 +198,32 @@ private fun DiceBoard(
                 }
             },
     ) {
-        if (state.dice.size == 1) {
-            FullScreenDie(
+        when (DiceBoardLayout.forDiceCount(state.dice.size)) {
+            DiceBoardLayout.Single -> FullScreenDie(
                 die = state.dice.single(),
                 settings = state.settings,
+                isRolling = isRolling,
                 modifier = Modifier.fillMaxSize(),
             )
-        } else {
-            DiceGrid(
+
+            DiceBoardLayout.Split -> SplitDiceLayout(
                 dice = state.dice,
                 settings = state.settings,
+                isRolling = isRolling,
+                modifier = Modifier.fillMaxSize(),
+            )
+
+            DiceBoardLayout.TwoByTwo -> TwoByTwoDiceLayout(
+                dice = state.dice,
+                settings = state.settings,
+                isRolling = isRolling,
+                modifier = Modifier.fillMaxSize(),
+            )
+
+            DiceBoardLayout.Grid -> DiceGrid(
+                dice = state.dice,
+                settings = state.settings,
+                isRolling = isRolling,
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -206,6 +234,7 @@ private fun DiceBoard(
 private fun FullScreenDie(
     die: Die,
     settings: DiceSettings,
+    isRolling: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val color = dieColor(die.id, settings.colorMode)
@@ -215,19 +244,74 @@ private fun FullScreenDie(
         background = color,
         pipSize = 54.dp,
         numberSize = 140,
+        isRolling = isRolling,
         modifier = modifier.background(color),
     )
+}
+
+@Composable
+private fun SplitDiceLayout(
+    dice: List<Die>,
+    settings: DiceSettings,
+    isRolling: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier) {
+        dice.forEach { die ->
+            DieFace(
+                die = die,
+                settings = settings,
+                background = dieColor(die.id, settings.colorMode),
+                pipSize = if (dice.size == 2) 38.dp else 30.dp,
+                numberSize = if (dice.size == 2) 112 else 88,
+                isRolling = isRolling,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+            )
+        }
+    }
+}
+
+@Composable
+private fun TwoByTwoDiceLayout(
+    dice: List<Die>,
+    settings: DiceSettings,
+    isRolling: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier) {
+        dice.chunked(2).forEach { rowDice ->
+            Row(modifier = Modifier.weight(1f)) {
+                rowDice.forEach { die ->
+                    DieFace(
+                        die = die,
+                        settings = settings,
+                        background = dieColor(die.id, settings.colorMode),
+                        pipSize = 26.dp,
+                        numberSize = 78,
+                        isRolling = isRolling,
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxSize(),
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
 private fun DiceGrid(
     dice: List<Die>,
     settings: DiceSettings,
+    isRolling: Boolean,
     modifier: Modifier = Modifier,
 ) {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 118.dp),
-        modifier = modifier.padding(bottom = 96.dp),
+        modifier = modifier,
+        contentPadding = PaddingValues(bottom = 124.dp),
         userScrollEnabled = dice.size > 12,
     ) {
         items(dice, key = { it.id }) { die ->
@@ -237,6 +321,7 @@ private fun DiceGrid(
                 background = dieColor(die.id, settings.colorMode),
                 pipSize = 14.dp,
                 numberSize = 38,
+                isRolling = isRolling,
                 modifier = Modifier
                     .padding(2.dp)
                     .aspectRatio(1f),
@@ -252,11 +337,40 @@ private fun DieFace(
     background: Color,
     pipSize: Dp,
     numberSize: Int,
+    isRolling: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val face = DiceFaceRenderer.render(die.value, settings.displayMode)
+    val transition = rememberInfiniteTransition(label = "dice-roll")
+    val rotation by transition.animateFloat(
+        initialValue = -12f,
+        targetValue = 12f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 180, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "dice-roll-rotation",
+    )
+    val scale by transition.animateFloat(
+        initialValue = 0.94f,
+        targetValue = 1.03f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 140, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "dice-roll-scale",
+    )
     Box(
         modifier = modifier
+            .graphicsLayer {
+                if (isRolling) {
+                    rotationX = rotation
+                    rotationY = -rotation
+                    scaleX = scale
+                    scaleY = scale
+                    cameraDistance = 14f * density
+                }
+            }
             .background(background)
             .padding(18.dp),
         contentAlignment = Alignment.Center,
@@ -379,6 +493,7 @@ private fun SettingsSheet(
     onStateChange: (DiceState) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(SettingsSection.DiceCount) }
+    var showCustomDiceRanges by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -424,14 +539,27 @@ private fun SettingsSheet(
                     onChange = { onStateChange(DiceEngine.setDefaultRange(state, it)) },
                 )
                 Spacer(modifier = Modifier.height(10.dp))
-                state.dice.forEach { die ->
-                    RangeEditor(
-                        title = "Dado ${die.id}",
-                        range = die.range,
-                        showUseDefault = die.hasCustomRange,
-                        onUseDefault = { onStateChange(DiceEngine.clearDieRange(state, die.id)) },
-                        onChange = { onStateChange(DiceEngine.setDieRange(state, die.id, it)) },
+                Button(onClick = { showCustomDiceRanges = !showCustomDiceRanges }) {
+                    Text(
+                        text = stringResource(
+                            id = if (showCustomDiceRanges) {
+                                R.string.settings_hide_custom_dice
+                            } else {
+                                R.string.settings_customize_dice
+                            },
+                        ),
                     )
+                }
+                if (showCustomDiceRanges) {
+                    state.dice.forEach { die ->
+                        RangeEditor(
+                            title = "Dado ${die.id}",
+                            range = die.range,
+                            showUseDefault = die.hasCustomRange,
+                            onUseDefault = { onStateChange(DiceEngine.clearDieRange(state, die.id)) },
+                            onChange = { onStateChange(DiceEngine.setDieRange(state, die.id, it)) },
+                        )
+                    }
                 }
             }
 
@@ -654,7 +782,13 @@ private fun RangeValueButton(
     Column(modifier = modifier) {
         Text(text = label, fontSize = 12.sp, color = Color.DarkGray)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Button(onClick = onDecrease, contentPadding = ButtonDefaults.ContentPadding) {
+            Button(
+                onClick = onDecrease,
+                modifier = Modifier
+                    .width(56.dp)
+                    .height(38.dp),
+                contentPadding = PaddingValues(0.dp),
+            ) {
                 Text("−")
             }
             Text(
@@ -663,7 +797,13 @@ private fun RangeValueButton(
                 textAlign = TextAlign.Center,
                 fontWeight = FontWeight.Bold,
             )
-            Button(onClick = onIncrease, contentPadding = ButtonDefaults.ContentPadding) {
+            Button(
+                onClick = onIncrease,
+                modifier = Modifier
+                    .width(56.dp)
+                    .height(38.dp),
+                contentPadding = PaddingValues(0.dp),
+            ) {
                 Text("+")
             }
         }
@@ -789,8 +929,23 @@ private fun rememberRollSoundPlayer(): RollSoundPlayer {
 private class RollSoundPlayer {
     private val toneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 60)
 
-    fun play() {
-        toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 90)
+    fun play(speed: RollSpeed) {
+        Thread {
+            val taps = when (speed) {
+                RollSpeed.Slow -> 9
+                RollSpeed.Normal -> 7
+                RollSpeed.Fast -> 5
+            }
+            repeat(taps) { index ->
+                synchronized(toneGenerator) {
+                    toneGenerator.startTone(
+                        if (index % 2 == 0) ToneGenerator.TONE_PROP_ACK else ToneGenerator.TONE_PROP_BEEP,
+                        34,
+                    )
+                }
+                Thread.sleep((speed.delayMillis * 0.7f).toLong().coerceAtLeast(22L))
+            }
+        }.start()
     }
 
     fun release() {

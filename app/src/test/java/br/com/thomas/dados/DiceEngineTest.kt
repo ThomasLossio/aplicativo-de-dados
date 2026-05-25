@@ -99,6 +99,15 @@ class DiceEngineTest {
         assertFalse(DiceRange.isValid(8, 6))
         assertTrue(DiceRange.isValid(1, 100))
     }
+
+    @Test
+    fun boardLayoutUsesLargeFullScreenRegionsForSmallDiceCounts() {
+        assertEquals(DiceBoardLayout.Single, DiceBoardLayout.forDiceCount(1))
+        assertEquals(DiceBoardLayout.Split, DiceBoardLayout.forDiceCount(2))
+        assertEquals(DiceBoardLayout.Split, DiceBoardLayout.forDiceCount(3))
+        assertEquals(DiceBoardLayout.TwoByTwo, DiceBoardLayout.forDiceCount(4))
+        assertEquals(DiceBoardLayout.Grid, DiceBoardLayout.forDiceCount(5))
+    }
 }
 
 private class FixedDiceRandom(private val value: Int) : DiceRandom {

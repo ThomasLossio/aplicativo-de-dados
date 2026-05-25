@@ -13,6 +13,8 @@
     <string name="settings_feedback">Som e vibração</string>
     <string name="settings_total">Mostrar total</string>
     <string name="settings_default_range">Intervalo padrão</string>
+    <string name="settings_customize_dice">Personalizar dados</string>
+    <string name="settings_hide_custom_dice">Ocultar personalização</string>
     <string name="settings_min_value">Mínimo</string>
     <string name="settings_max_value">Máximo</string>
     <string name="settings_follow_default">Usar padrão</string>

@@ -47,6 +47,22 @@ enum class ColorMode {
     Single,
 }
 
+enum class DiceBoardLayout {
+    Single,
+    Split,
+    TwoByTwo,
+    Grid;
+
+    companion object {
+        fun forDiceCount(count: Int): DiceBoardLayout = when (count) {
+            1 -> Single
+            2, 3 -> Split
+            4 -> TwoByTwo
+            else -> Grid
+        }
+    }
+}
+
 enum class RollSpeed(
     val steps: Int,
     val delayMillis: Long,
