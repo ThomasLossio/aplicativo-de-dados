@@ -46,10 +46,10 @@ Se `adb` e `emulator` não estiverem no `PATH`, use os executáveis diretamente 
 .\gradlew.bat :app:assembleDebug
 ```
 
-O APK de debug fica em:
+Como o projeto está dentro do OneDrive, os arquivos de build são gerados fora da pasta sincronizada para evitar erros de snapshot do Gradle/Android Studio. O APK de debug fica em:
 
 ```text
-app\build\outputs\apk\debug\app-debug.apk
+C:\Users\thoma\AppData\Local\GradleBuilds\AplicativoDeDados\app\outputs\apk\debug\app-debug.apk
 ```
 
 ## Como rodar testes automatizados
